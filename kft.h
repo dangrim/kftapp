@@ -1,15 +1,17 @@
-struct Packet {
-	
+typedef unsigned short u16;
+
+typedef struct Packet {
+	u16 src_port;
+	u16 dst_port;
+	u16 length;
+	u16 checksum;
+	char *data;
 }pkt;
 
-
-int corrupt(pkt *p);
-void extract(pkt *p, char *data);
-void handle_data(char *data);
-int isACK(pkt *p);
-int isNAK(pkt *p);
-pkt make_pkt(char *data, int checksum);
-pkt make_ack(int ack);
+u16 calc_checksum(pkt *packet);
+void deliver_data(char * data);
+void extract(pkt *packet);
+pkt *make_pkt(char *data, int checksum);
 int rcv_pkt(pkt *p);
-void send(char *data);
+void send_data(char *data, int size);
 void send_pkt(pkt *p);

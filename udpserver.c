@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     struct sockaddr_in servAddr; 	/* Local address */
     struct sockaddr_in clntAddr; 	/* Client address */
     unsigned int cliAddrLen;        /* Length of incoming message */
-    char buffer[MAX];        		/* Buffer for string */
+    char *buffer;        		/* Buffer for string */
     unsigned short servPort;     	/* Server port */
     int recvMsgSize;                /* Size of received message */
 
