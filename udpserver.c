@@ -7,6 +7,7 @@ int main(int argc, char *argv[])
     struct sockaddr_in clntAddr; 	/* Client address */
     unsigned int cliAddrLen;      /* Length of incoming message */
     char *buffer;        					/* Buffer for string */
+    char *read_buffer;
     u16 servPort;     	/* Server port */
     int recvMsgSize;              /* Size of received message */
 		int listen = NULL;
@@ -36,39 +37,49 @@ int main(int argc, char *argv[])
         DieWithError("bind() failed");
   
 		/*handle intial request*/
-
+    if ((recvMsgSize = recvfrom(sock, buffer, sizeof(request), 0,
+        (struct sockaddr *) &clntAddr, &cliAddrLen)) == sizeof(request))
+        {
+          printf("Buffer: %s\n", buffer);
+        }
+    if (sendto(sock, buffer, recvMsgSize, 0, 
+         (struct sockaddr *) &clntAddr, sizeof(clntAddr)) != recvMsgSize)
+    {
+        printf("Answering client.\n");
+    }
 		/*transfer*/
-
-
 
     for (;;) /* Run forever */
     {
-        /* Set the size of the in-out parameter */
-        cliAddrLen = sizeof(clntAddr);
+      /* Set the size of the in-out parameter */
+      cliAddrLen = sizeof(clntAddr);
 
-        /* Block until receive message from a client */
-        if ((recvMsgSize = recvfrom(sock, buffer, MAX, 0,
-            (struct sockaddr *) &clntAddr, &cliAddrLen)) < 0)
-				{
+      /* Block until receive message from a client */
+      while((recvMsgSize = recvfrom(sock, buffer, sizeof(request), 0,
+          (struct sockaddr *) &clntAddr, &cliAddrLen)) == sizeof(request))
+			{
+				rcvCount++;
+				printf("Receive Count Incremented: %d\n", rcvCount);
+			  /*else
+			  {
           DieWithError("recvfrom() failed");
-				}
-				else
-				{
-					rcvCount++;
-					printf("Receive Count Incremented: %d\n", rcvCount);
-				}
+			  }*/
         printf("Handling client %s\n", inet_ntoa(clntAddr.sin_addr));
+        request *r = extract_request(buffer);
+        read_buffer = malloc(sizeof(r->max_packet_size - PACKET_HEADER_SIZE));
+        read(r->filename, read_buffer, (r->max_packet_size - PACKET_HEADER_SIZE));
 
         /* Send received datagram back to the client */
         if (sendto(sock, buffer, recvMsgSize, 0, 
              (struct sockaddr *) &clntAddr, sizeof(clntAddr)) != recvMsgSize)
-				{
+			  {
         	DieWithError("sendto() sent a different number of bytes than expected");
-				}
-				else{
-					sendCount++;
-					printf("Receive Count Incremented: %d\n", sendCount);
-				}
+			  }
+			  else{
+				  sendCount++;
+				  printf("Receive Count Incremented: %d\n", sendCount);
+			  }
+		  }
     }
     /* NOT REACHED */
 }

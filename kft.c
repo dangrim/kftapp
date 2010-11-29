@@ -34,23 +34,53 @@ void deliver_data(char * data)
 	
 }
 
-pkt *extract(char *buffer, int buffer_length)
+pkt *extract(u8 *buffer)
 {
+  int i;
+  char *d;
 	pkt *new_packet = (pkt *)malloc(sizeof(pkt));
+	
+  /*Header Fields*/
 	new_packet->src_port = buffer[0] | (buffer[1] << 8);
 	new_packet->dst_port = buffer[2] | (buffer[3] << 8);
 	new_packet->length =  buffer[4] | (buffer[5] << 8);
 	new_packet->checksum = buffer[6] | (buffer[7] << 8);
-	new_packet->data = (char *) malloc(new_packet->length);
-	char *data = (char *) (buffer[8] | (buffer[9] << 8) | (buffer[10] << 16) | (buffer[11] << 24));
-	new_packet->data = (char *) memcpy(new_packet->data, data, new_packet->length);
+	
+	d = (char *)(buffer[8] + (buffer[9] << 8) + (buffer[10] << 16) + (buffer[11] << 24));
+	
+	new_packet->data = malloc(new_packet->length);
+	if(NULL != new_packet->data)
+	{
+	  memcpy(new_packet->data, (char *) d, new_packet->length);
+  }
 	return new_packet;
+}
+
+request *extract_request(u8 *buffer)
+{
+  char *name;
+  char *d;
+	request *new_request = (request *)malloc(sizeof(request));
+	
+  /*Header Fields*/
+	name = (char *)(buffer[8] + (buffer[1] << 8) + (buffer[2] << 16) + (buffer[3] << 24));
+	new_request->max_packet_size =  buffer[4] | (buffer[5] << 8);
+	new_request->ack = buffer[6];
+	
+	d = (char *)(buffer[8] + (buffer[9] << 8) + (buffer[10] << 16) + (buffer[11] << 24));
+	
+	new_request->filename = malloc(strlen(name));
+	if(NULL != new_request->filename)
+	{
+	  memcpy(new_request->filename, name, strlen(name));
+  }
+	return new_request;
 }
 
 /**
 *	Create a packet
 */
-pkt *make_pkt(char *data, int checksum)
+pkt *make_pkt(u8 *data)
 {
 	pkt *packet = malloc(sizeof(pkt));
 	if(NULL != packet)
@@ -69,7 +99,6 @@ request *make_request(char *filename, int name_length, u16 max_packet_size, u8 a
 	if(NULL != r)
 	{
 		r->filename = filename;
-		r->name_length = name_length;
 		r->max_packet_size = max_packet_size;
 		r->ack = ack;
 	}
@@ -91,7 +120,10 @@ void send_pkt(pkt *p)
 
 }
 
-int testChecksum()
+/**
+* Test to see if calc_checksum worked properly
+*/
+void testChecksum()
 {
 	pkt *packet;
 	packet = (pkt *) malloc(sizeof(pkt));
@@ -104,13 +136,16 @@ int testChecksum()
 		u16 correct = 19138;
 		correct = ~correct & (0xFFFF);
 		u16 result = calc_checksum(packet);
+		if(correct == result){
+		  printf("Checksum Test - SUCCESS\n");
+	  }
+		/*
 		printf("Checksum: %u\nCorrect: %u\n", result, correct);    /* Print the received data */
 	}
 }
 
-void testPacket()
+void testExtract()
 {
-	printf("FAIL");
 	pkt *packet;
 	pkt *copy;
 	
@@ -123,32 +158,34 @@ void testPacket()
 		packet->checksum = calc_checksum(packet);
 		packet->data = "hello";
 
-		copy = extract((char *)packet, (packet->length + PACKET_HEADER_SIZE + 4));
-
+		copy = extract((char *)packet);
+    
+    /*
 		printf("Copy Src: %u , Packet Src: %u\n", copy->src_port, packet->src_port);
 		printf("Copy Dst: %u , Packet Dst: %u\n", copy->dst_port, packet->dst_port);
 		printf("Copy Length: %u , Packet Length: %u\n", copy->length, packet->length);
 		printf("Copy Checksum: %u , Packet Checksum: %u\n", copy->checksum, packet->checksum);
-		printf("Copy Data: %s , Packet Data %s", copy->data, packet->data);
+		printf("Copy Data: %s, Packet Data: %s\n", copy->data, packet->data);
+		*/
+		
 		if(copy->src_port == packet->src_port &&
 			copy->dst_port == packet->dst_port &&
 			copy->length == packet->length &&
-			copy->checksum == packet->checksum)
+			copy->checksum == packet->checksum &&
+			(0 == strcmp(copy->data, packet->data)))
 		{
-			printf("Both packets are equal.\n");
+			printf("Extract Test - SUCCESS.\n");
 		}
 		else
 		{
-			printf("Packets are not equal.\n");
+			printf("Extract Test - FAIL.\n");
 		}
 	}
 }
 
 
-void main()
+/*void main()
 {
-	testPacket();
-	/*testChecksum();*/
-	/*int * buffer = malloc(sizeof(int));
-	unsigned int b = (unsigned int) buffer;*/
-}
+  testChecksum();
+  testExtract();
+}*/

@@ -23,24 +23,24 @@ int main(int argc, char *argv[])
   int response_length = 0;         		/* Size of received datagram */
 	request *initial;
 
-	if (argc != 4)    /* Test for correct number of arguments */
+	if (argc != 5)    /* Test for correct number of arguments */
   {
       fprintf(stderr,"Usage: %s <Server IP>  <Port #> <Remote File> <Local File> <Max Packet Size>\n", argv[0]);
   }
-
 	/*ARGUMENTS*/
 	servIP = argv[1];           /* First arg:  server IP address (dotted quad) */
 	servPort = atoi(argv[2]);   /* Second arg: port # */
   remote_file = argv[3];      /* Third arg: Remote file name */
 	local_file = argv[4];				/* Fourth arg: Local file name */
-	max_packet_size = (u16) argv[5];	/* FIfth arg: Maximum Packet Size*/
+	max_packet_size = (u16) atoi(argv[5]);	/* FIfth arg: Maximum Packet Size*/
+  printf("%s %d %s %s %u\n", servIP, servPort, remote_file, local_file, max_packet_size);
   if (max_packet_size > 60000 || max_packet_size < PACKET_HEADER_SIZE+1)
 	{
     DieWithError("Please specify a packet size between 1 and 60000");
 	}
 
 	/*allocate space for the biggest possible packet.*/
-	buffer = (char *)malloc(sizeof(char) *max_packet_size + PACKET_HEADER_SIZE);
+	buffer = (char *)malloc(sizeof(char) *max_packet_size);
 	if(!buffer)
 	{
 		DieWithError("Unable to allocate memory for packets that large.");
@@ -85,6 +85,12 @@ int main(int argc, char *argv[])
 	}
 
   /* Get a response */
+  if((response_length = recvfrom(sock, buffer, max_packet_size, 0,
+         (struct sockaddr *) &fromAddr, &fromSize)) == sizeof(request) &&
+         buffer[response_length-1] == ACK)
+  {
+    printf("Request granted.\n");
+  }
   
   fromSize = sizeof(fromAddr);
   alarm(TIMEOUT_SECS);        /* Set the timeout */
@@ -94,21 +100,29 @@ int main(int argc, char *argv[])
          (struct sockaddr *) &fromAddr, &fromSize)) < 0)
 	{
 		pkt * packet = extract(buffer);
-		file = fopen (local_file, "a+");  /* open the file for reading */
-		fwrite(string, 1, writeSize, file);
-		fclose(file);  /* close the file prior to exiting the routine */
+		
+		/*Write message*/
+		/*TODO: ADD NACK KNOWLEDGE*/
+		write(local_file, packet->data, packet->length);
 
-	/*Write message*/
-
-
-    if (errno == EINTR)     /* Alarm went off  */
+		/*Send ACK or NACK*/
+		request *req = make_request(remote_file, strlen(remote_file), max_packet_size, ACK);
+    if (sendto(sock, req, sizeof(request), 0, (struct sockaddr *)
+          &servAddr, sizeof(servAddr)) != sizeof(request))
+		{
+          DieWithError("sendto() failed");
+		}
+		else
+		{
+			sendCount++;
+			printf("Send Count: %d\n", sendCount);
+		}
+/*
+    if (errno == EINTR)     /* Alarm went off  
     {
-      if (tries < MAXTRIES)      /* incremented by signal handler */
+      if (tries < MAXTRIES)      /* incremented by signal handler 
       {
         printf("timed out, %d more tries...\n", MAXTRIES-tries);
-
-				/*Send ACK or NACK*/
-				request *req = make_request(remote_file, strlen(remote_file), max_packet_size, ACK);
 
         if (sendto(sock, req, sizeof(request), 0, (struct sockaddr *)
 	            &servAddr, sizeof(servAddr)) != sizeof(request))
@@ -130,11 +144,12 @@ int main(int argc, char *argv[])
   	else
 		{
       DieWithError("recvfrom() failed");
-		}
+		}*/
+		/*alarm(0);*/
 		/* recvfrom() got something --  cancel the timeout */
-		alarm(0);
 
-		printf("Received: %s\n", buffer);    /* Print the received data */
+
+		printf("Received: %s\n", packet->data);    /* Print the received data */
 		}
 	close(sock);
 	exit(0);
