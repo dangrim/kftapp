@@ -183,6 +183,10 @@ void testExtract()
 	}
 }
 
+void CatchAlarm(int ignored)     /* Handler for SIGALRM */
+{
+
+}
 
 /*void main()
 {

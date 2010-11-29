@@ -14,6 +14,8 @@ int main(int argc, char *argv[])
 	char *buffer;      							/* Buffer for string */
 	/*Debug*/
 	int rcvCount, sendCount = 0;
+	unsigned int drop_percent;
+	int i = 0;
 
   u16 servPort;     	/* Server port */
   char *servIP;
@@ -23,16 +25,25 @@ int main(int argc, char *argv[])
   int response_length = 0;         		/* Size of received datagram */
 	request *initial;
 
-	if (argc != 5)    /* Test for correct number of arguments */
+	if (argc < 6 || argc > 7)    /* Test for correct number of arguments */
   {
-      fprintf(stderr,"Usage: %s <Server IP>  <Port #> <Remote File> <Local File> <Max Packet Size>\n", argv[0]);
+      fprintf(stderr,"Usage: %s <Server IP>  <Port #> <Remote File> <Local File> <Max Packet Size> <Drop Percent>\n", argv[0]);
   }
-	/*ARGUMENTS*/
-	servIP = argv[1];           /* First arg:  server IP address (dotted quad) */
-	servPort = atoi(argv[2]);   /* Second arg: port # */
-  remote_file = argv[3];      /* Third arg: Remote file name */
-	local_file = argv[4];				/* Fourth arg: Local file name */
-	max_packet_size = (u16) atoi(argv[5]);	/* FIfth arg: Maximum Packet Size*/
+	else if(argc == 7 && (strcmp(argv[1], "-d") != 0) )
+	{
+					
+			i = 1;
+      fprintf(stderr,"Usage: %s <Server IP>  <Port #> <Remote File> <Local File> <Max Packet Size> <Drop Percent>\n", argv[0]);		
+	}
+	
+	/*ARGUMENTS & Checks*/
+	servIP = argv[i+1];           /* First arg:  server IP address (dotted quad) */
+	servPort = atoi(argv[i+2]);   /* Second arg: port # */
+  remote_file = argv[i+3];      /* Third arg: Remote file name */
+	local_file = argv[i+4];				/* Fourth arg: Local file name */
+	max_packet_size = (u16) atoi(argv[i+5]);	/* FIfth arg: Maximum Packet Size*/
+	drop_percent = atoi(argv[i+6];
+	
   printf("%s %d %s %s %u\n", servIP, servPort, remote_file, local_file, max_packet_size);
   if (max_packet_size > 60000 || max_packet_size < PACKET_HEADER_SIZE+1)
 	{
@@ -56,13 +67,13 @@ int main(int argc, char *argv[])
 	{
     DieWithError("sigfillset() failed");
 	}
-
   myAction.sa_flags = 0;
 
   if (sigaction(SIGALRM, &myAction, 0) < 0)
 	{
   	DieWithError("sigaction() failed for SIGALRM");
 	}
+
   /* Construct the server address structure */
   memset(&servAddr, 0, sizeof(servAddr));    /* Zero out structure */
   servAddr.sin_family = AF_INET;
