@@ -1,23 +1,16 @@
-#include <stdio.h>      /* for printf() and fprintf() */
-#include <sys/socket.h> /* for socket() and bind() */
-#include <arpa/inet.h>  /* for sockaddr_in and inet_ntoa() */
-#include <stdlib.h>     /* for atoi() and exit() */
-#include <string.h>     /* for memset() */
-#include <unistd.h>     /* for close() */
-
-#define MAX 255     /* Longest string */
-
-void DieWithError(char *errorMessage);  /* External error handling function */
+#include "udpserver.h"
 
 int main(int argc, char *argv[])
 {
-    int sock;                       /* Socket */
+    int sock;                     /* Socket */
     struct sockaddr_in servAddr; 	/* Local address */
     struct sockaddr_in clntAddr; 	/* Client address */
-    unsigned int cliAddrLen;        /* Length of incoming message */
-    char *buffer;        		/* Buffer for string */
-    unsigned short servPort;     	/* Server port */
-    int recvMsgSize;                /* Size of received message */
+    unsigned int cliAddrLen;      /* Length of incoming message */
+    char *buffer;        					/* Buffer for string */
+    u16 servPort;     	/* Server port */
+    int recvMsgSize;              /* Size of received message */
+		int listen = NULL;
+		int rcvCount, sendCount = 0;
 
     if (argc != 2)         /* Test for correct number of parameters */
     {
@@ -42,6 +35,12 @@ int main(int argc, char *argv[])
     if (bind(sock, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0)
         DieWithError("bind() failed");
   
+		/*handle intial request*/
+
+		/*transfer*/
+
+
+
     for (;;) /* Run forever */
     {
         /* Set the size of the in-out parameter */
@@ -50,14 +49,31 @@ int main(int argc, char *argv[])
         /* Block until receive message from a client */
         if ((recvMsgSize = recvfrom(sock, buffer, MAX, 0,
             (struct sockaddr *) &clntAddr, &cliAddrLen)) < 0)
-            DieWithError("recvfrom() failed");
-
+				{
+          DieWithError("recvfrom() failed");
+				}
+				else
+				{
+					rcvCount++;
+					printf("Receive Count Incremented: %d\n", rcvCount);
+				}
         printf("Handling client %s\n", inet_ntoa(clntAddr.sin_addr));
 
         /* Send received datagram back to the client */
         if (sendto(sock, buffer, recvMsgSize, 0, 
              (struct sockaddr *) &clntAddr, sizeof(clntAddr)) != recvMsgSize)
-            DieWithError("sendto() sent a different number of bytes than expected");
+				{
+        	DieWithError("sendto() sent a different number of bytes than expected");
+				}
+				else{
+					sendCount++;
+					printf("Receive Count Incremented: %d\n", sendCount);
+				}
     }
     /* NOT REACHED */
+}
+
+void transfer()
+{
+
 }
