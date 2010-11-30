@@ -92,8 +92,8 @@ int main(int argc, char *argv[])
   servAddr.sin_port = htons(servPort);       /* Server port */
 
   /* Send the Initial Request to the server */
-  if (response_length = sendto(sock, "TEST!", 5, 0, (struct sockaddr *)
-             &servAddr, sizeof(servAddr)) < 0)
+  if ((response_length = sendto(sock, "TEST!", 5, 0, (struct sockaddr *)
+             &servAddr, sizeof(servAddr))) < 0)
 	{
 	  DieWithError("Failed to Send initial request");
 	}

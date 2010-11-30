@@ -53,6 +53,8 @@ int main(int argc, char *argv[])
     if (bind(sock, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0)
         DieWithError("bind() failed");
 
+		buffer = (char *)malloc(5);		
+
     while(1) /* Run forever */
     {
       /* Set the size of the in-out parameter */
