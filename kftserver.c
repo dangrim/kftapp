@@ -114,9 +114,7 @@ void accept_request()
 			if(in_buffer[0] == 0 && (free_connection == 1))
 			{
 				printf("new connection, time to init\n");
-				free_connection = 0;
 				init_transfer(in_buffer, recv_msg_size);
-				acknowledged = 1;
 			}
 			else
 			{
@@ -160,6 +158,7 @@ void init_transfer(u8 *buffer, u32 msg_size)
 {
 	offset = 0;
 	tries = 0;
+	free_connection = 0;
 	max_packet_size = (buffer[1] + (buffer[2] << 8));
 	filename = (u8 *)malloc(msg_size-INITIAL_REQUEST_SIZE);
 	memcpy(filename, buffer+3, msg_size-INITIAL_REQUEST_SIZE);
@@ -181,6 +180,7 @@ void init_transfer(u8 *buffer, u32 msg_size)
 	{
 		printf("filename: %s, packet size: %d\n", filename, max_packet_size);
 	}
+	acknowledged = 1;
 }
 
 /*
@@ -238,7 +238,7 @@ int read_a_file(char *filename, u8 *buffer, u16 read_length)
 	read_file = fopen(filename, "rb");  /* open the file for reading */
 	if(NULL == read_file)
 	{
-		fprintf(stderr, "FILE NOTE FOUND.\n", filename);
+		fprintf(stderr, "FILE NOT FOUND.\n", filename);
 		acknowledged = 0;
 		return 1;
 	}
@@ -276,7 +276,7 @@ void assess()
 	}
 	else if(off != offset && in_buffer[0])
 	{
-
+		//acknowledged = 0;
 	}
 	else{
 		init_transfer(in_buffer, recv_msg_size);

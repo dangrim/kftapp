@@ -210,8 +210,9 @@ void make_request()
 		printf("offset: %d\n", offset);
 		for(k = 0; k < 5; k++)
 		{
-			printf("%d|\n", out_buffer[k]);
+			printf("%d|", out_buffer[k]);
 		}
+		printf("%s\n", out_buffer+5);
 	}
 }
 /*
