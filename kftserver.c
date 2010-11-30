@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
 		{
 			DieWithError("Drop Percent must be between 1 and 99");
 		}
+		set_dropper(drop_percent);
 		/* Show parsed arguments */	
 		if(debug)
 		{
@@ -264,7 +265,7 @@ void assess()
 	{
 		printf("Offset %d, msg_offset %d\n", offset ,off);
 	}
-	if(off == offset)
+	if(off == offset && in_buffer[0])
 	{
 		if(debug)
 		{
@@ -273,11 +274,14 @@ void assess()
 		offset += recv_msg_size-RESPONSE_HEADER_SIZE;	
 		acknowledged = 0;
 	}
+	else{
+		init_transfer(in_buffer, recv_msg_size);
+	}
 }
 
 void write_msg()
 {
-	sendto(sock, out_buffer, max_packet_size, 0, (struct sockaddr *) &clntAddr, sizeof(clntAddr));
+	sendto_dropper(sock, out_buffer, max_packet_size, 0, (struct sockaddr *) &clntAddr, sizeof(clntAddr));
 }
 
 void CatchAlarm(int ignored)

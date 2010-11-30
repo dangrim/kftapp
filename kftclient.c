@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 	{
 		DieWithError("Drop Percent must be between 1 and 99");
 	}
-
+	set_dropper(drop_percent);
 	/* Show parsed arguments */	
 	if(debug)
 	{
@@ -110,12 +110,6 @@ int main(int argc, char *argv[])
   servAddr.sin_addr.s_addr = inet_addr(servIP);  /* Server IP address */
   servAddr.sin_port = htons(servPort);       /* Server port */
 
-  /* Send the Initial Request to the server */
-/*  if ((response_length = sendto(sock, init_buffer, INITIAL_REQUEST_SIZE+strlen(remote_file), 0, (struct sockaddr *)
-             &servAddr, sizeof(servAddr))) < 0)
-	{
-		printf("Error with initial request");
-	}*/
 	in_buffer = (u8 *) malloc(max_packet_size);
   /* Get a response */
 	if(debug)
@@ -225,7 +219,7 @@ void make_request()
 */
 void write_msg()
 {
-	sendto(sock, out_buffer, max_packet_size, 0, (struct sockaddr *) &servAddr, sizeof(servAddr));
+	sendto_dropper(sock, out_buffer, max_packet_size, 0, (struct sockaddr *) &servAddr, sizeof(servAddr));
 }
 
 /*
