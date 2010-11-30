@@ -122,21 +122,21 @@ void accept_request()
 int send_until_success()
 {
 	write_msg();	
-	alarm(5);
+	ualarm(TIMEOUT_VALUE, 0);
 	while((recv_msg_size = recvfrom(sock, in_buffer, MAX_REQUEST_SIZE, 0,
 		(struct sockaddr *) &clntAddr, &cliAddrLen)) < 0)
 	{
 		if(errno == EINTR)
 		{
 			write_msg();
-			alarm(5);
+			ualarm(TIMEOUT_VALUE, 0);
 		}
 		else
 		{
 			return 1;
 		}
 	}
-	alarm(0);
+	ualarm(0, 0);
 	if(debug)
 	{
 		printf("Msg Size: %d.\n", recv_msg_size);
@@ -150,6 +150,7 @@ int send_until_success()
 void init_transfer(u8 *buffer, u32 msg_size)
 {
 	offset = 0;
+	tries = 0;
 	max_packet_size = (buffer[1] + (buffer[2] << 8));
 	filename = (u8 *)malloc(msg_size-INITIAL_REQUEST_SIZE);
 	memcpy(filename, buffer+3, msg_size-INITIAL_REQUEST_SIZE);
@@ -240,7 +241,7 @@ int read_a_file(char *filename, u8 *buffer, u16 read_length)
 		
 		if(debug)
 		{
-			printf("File complete");
+			printf("File complete!\n");
 		}
 	}
 	printf("Read: %s\n", buffer);
@@ -274,10 +275,6 @@ void write_msg()
 void CatchAlarm(int ignored)
 {
 	tries++;
-	if(debug)
-	{
-		printf("Failed Attempt #%d", tries);
-	}
 }
 
 int unpack_int(u8 *buffer)

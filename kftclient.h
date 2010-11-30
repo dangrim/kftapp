@@ -16,6 +16,7 @@ typedef unsigned int u32;
 
 #define ACK 1
 #define NACK 0
+#define TIMEOUT_VALUE 	100000
 #define INITIAL_REQUEST_SIZE 3
 #define REQUEST_SIZE 5
 

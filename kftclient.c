@@ -20,6 +20,7 @@ u16 max_packet_size = 0;
 
 int main(int argc, char *argv[])
 {
+	struct timeval start, end;
 
 	/* Arguments */
   u16 servPort;     					/* Server port */
@@ -123,7 +124,7 @@ int main(int argc, char *argv[])
 		printf("Response Length: %d, Max Packet Size: %d", response_length, max_packet_size);
 	}	
   fromSize = sizeof(fromAddr);
-
+	gettimeofday(&start, NULL);
 	while(1)
 	{
 		servSize = sizeof(servAddr);
@@ -137,10 +138,16 @@ int main(int argc, char *argv[])
 		
 		printf("Received: %s\n", in_buffer+8);    /* Print the received data */
 	}
+	gettimeofday(&end, NULL);
+
+	int seconds = end.tv_sec - start.tv_sec;
+	int microseconds = end.tv_usec - start.tv_usec;
+
 	if(debug)
 	{
 		printf("Transfer complete!\n");
 	}
+	printf("File transfer completed in %d seconds and %d microseconds.\n", seconds, microseconds);
 	close(sock);
 	exit(0);
 }
@@ -161,6 +168,7 @@ void CatchAlarm(int ignored)
 */
 char *pack_init_buffer(char *fname, int fname_length, u16 max_p_size)
 {
+	tries = 0;
 	u8 *init_b = (u8 *)malloc(INITIAL_REQUEST_SIZE + fname_length);
 	init_b[0] = 0;
 	init_b[1] = max_p_size & 0xFF;
@@ -170,27 +178,33 @@ char *pack_init_buffer(char *fname, int fname_length, u16 max_p_size)
 	return init_b;
 }
 
+/*
+*	Keeps writing a message until there is a response.
+*/
 int receive_and_send()
 {
 	write_msg();	
-	alarm(5);
+	ualarm(TIMEOUT_VALUE, 0);
 	while((recv_msg_size = recvfrom(sock, in_buffer, max_packet_size, 0,
 		(struct sockaddr *) &servAddr, &servSize)) < 0)
 	{
 		if(errno == EINTR)
 		{
 			write_msg();
-			alarm(5);
+			ualarm(TIMEOUT_VALUE, 0);
 		}
 		else
 		{
 			return 1;
 		}
 	}
-	alarm(0);
+	ualarm(0, 0);
 	return 0;
 }
 
+/*
+*	creates a request that is sent to the server
+*/
 void make_request()
 {
 	int k = 0;
@@ -226,6 +240,9 @@ void pack_int(u8 *buffer, u32 i)
 	buffer[3] = (i >> 24) & 0xFF;
 }
 
+/**
+*	Write to the file if the offsets match.
+*/
 void write_to_file()
 {
 	int length = unpack_int(in_buffer);
@@ -240,6 +257,9 @@ void write_to_file()
 	}
 }
 
+/*
+*	takes an int from a char * pointer
+*/
 int unpack_int(u8 *buffer)
 {
 	int i = 0;
