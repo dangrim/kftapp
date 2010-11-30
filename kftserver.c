@@ -274,6 +274,10 @@ void assess()
 		offset += recv_msg_size-RESPONSE_HEADER_SIZE;	
 		acknowledged = 0;
 	}
+	else if(off != offset && in_buffer[0])
+	{
+
+	}
 	else{
 		init_transfer(in_buffer, recv_msg_size);
 	}
