@@ -21,7 +21,6 @@ typedef unsigned int u32;
 #define TIMEOUT_VALUE 	100000
 #define INITIAL_REQUEST_SIZE 3
 #define RESPONSE_HEADER_SIZE 8
-#define MAX_ATTEMPTS 100
 #define MAX_REQUEST_SIZE 60000
 
 
