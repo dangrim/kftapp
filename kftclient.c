@@ -13,10 +13,10 @@ char *local_file;						/* Local Filename */
 unsigned int drop_percent;	/* Drop Percent */	
 
 int debug = 0;
-int previous_offset = -1;
 int tries = 0;
-int offset = 0;
-int recv_msg_size = 0;
+int offset = -1;
+int prev_offset = -1;
+u32 recv_msg_size = 0;
 u16 max_packet_size = 0;
 
 int main(int argc, char *argv[])
@@ -117,10 +117,10 @@ int main(int argc, char *argv[])
 		printf("Response Length: %d, Max Packet Size: %d", response_length, max_packet_size);
 	}	
   fromSize = sizeof(fromAddr);
+	servSize = sizeof(servAddr);
 	gettimeofday(&start, NULL);
 	while(1)
 	{
-		servSize = sizeof(servAddr);
 		receive_and_send();		
 		if(!unpack_int(in_buffer))
 		{
@@ -135,6 +135,12 @@ int main(int argc, char *argv[])
 
 	int seconds = end.tv_sec - start.tv_sec;
 	int microseconds = end.tv_usec - start.tv_usec;
+
+	if(microseconds < 0)
+	{
+		seconds--;
+		microseconds += 1000000;
+	}
 
 	if(debug)
 	{
@@ -183,7 +189,7 @@ int receive_and_send()
 	{
 		if(errno == EINTR)
 		{
-			write_msg();
+			write_msg();		
 			ualarm(TIMEOUT_VALUE, 0);
 		}
 		else
@@ -203,7 +209,7 @@ void make_request()
 	int k = 0;
 	out_buffer = (u8 *)malloc(REQUEST_SIZE);
 	out_buffer[0] = 1;
-	pack_int(out_buffer+1, offset);
+	pack_int(out_buffer+1, unpack_int(in_buffer+4));
 	
 	if(debug)
 	{
@@ -239,15 +245,15 @@ void pack_int(u8 *buffer, u32 i)
 */
 void write_to_file()
 {
-	int length = unpack_int(in_buffer);
-	int msg_offset = unpack_int(in_buffer+4);
-	if(offset == msg_offset)
+	u32 length = unpack_int(in_buffer);
+	prev_offset = offset;
+	offset = unpack_int(in_buffer+4);
+	if(prev_offset < offset)
 	{
-    FILE *file;
+		FILE *file;
 		file = fopen (local_file, "ab");  /* open the file for reading */
 		fwrite(in_buffer+8, 1, length, file);
 		fclose(file);  /* close the file prior to exiting the routine */
-		offset += length;
 	}
 }
 

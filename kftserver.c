@@ -2,17 +2,19 @@
 
 int debug = 0;
 int acknowledged = 0;
-int offset = 0;
+u32 offset = 0;
 int free_connection = 1;
 u32 max_packet_size = 0;
 int tries = 0;
 int finish = 0;
+int resend = 0;
 int drop_percent;							/* 2nd argument - drop percentage */		
+
 
 int sock;                     /* Socket */
 int recv_msg_size;
 int send_msg_size;
-char * filename;
+char *filename;
 
 struct sockaddr_in servAddr; 	/* Local address */
 struct sockaddr_in clntAddr; 	/* Client address */
@@ -156,7 +158,6 @@ int send_until_success()
 */
 void init_transfer(u8 *buffer, u32 msg_size)
 {
-	offset = 0;
 	tries = 0;
 	free_connection = 0;
 	max_packet_size = (buffer[1] + (buffer[2] << 8));
@@ -215,6 +216,10 @@ void make_pkt()
 			printf("NO MAS");
 		}
 	}
+	if(length == -1)
+	{
+		printf("Nonexistant file");
+	}
 	pack_int(out_buffer, length);	
 	pack_int(out_buffer+4, offset);
 	if(debug)
@@ -238,13 +243,15 @@ int read_a_file(char *filename, u8 *buffer, u16 read_length)
 	read_file = fopen(filename, "rb");  /* open the file for reading */
 	if(NULL == read_file)
 	{
-		fprintf(stderr, "FILE NOT FOUND.\n", filename);
+		fprintf(stderr, "%s NOT FOUND.\n", filename);
 		acknowledged = 0;
-		return 1;
+		free_connection = 0;
+		return -1;
 	}
 	fseek(read_file, offset, SEEK_SET);
 	result = fread(buffer, 1, read_length, read_file);
 	fclose(read_file);
+
 	if(result != read_length)
 	{
 		
@@ -259,7 +266,7 @@ int read_a_file(char *filename, u8 *buffer, u16 read_length)
 
 void assess()
 {
-	int off = unpack_int(in_buffer+1);
+	u32 off = unpack_int(in_buffer+1);
 	free(out_buffer);
 	if(debug)
 	{
@@ -272,7 +279,6 @@ void assess()
 			printf("Offset incrementing");
 		}
 		offset += recv_msg_size-RESPONSE_HEADER_SIZE;	
-		acknowledged = 0;
 	}
 	else if(off != offset && in_buffer[0])
 	{
@@ -293,11 +299,9 @@ void CatchAlarm(int ignored)
 	tries++;
 }
 
-int unpack_int(u8 *buffer)
+u32 unpack_int(u8 *buffer)
 {
-	int i = 0;
+	u32 i = 0;
 	i = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
 	return i;
 }
-
-//        printf("Handling client %s\n", inet_ntoa(clntAddr.sin_addr));
