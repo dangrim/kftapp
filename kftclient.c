@@ -9,7 +9,8 @@ int response_length;
 u8 *in_buffer;      				/* Buffer for string */
 u8 *out_buffer;      				/* Buffer for string */
 struct sigaction myAction;      /* For setting signal handler */
-	char *local_file;						/* Local Filename */
+char *local_file;						/* Local Filename */
+unsigned int drop_percent;	/* Drop Percent */	
 
 int debug = 0;
 int previous_offset = -1;
@@ -27,8 +28,6 @@ int main(int argc, char *argv[])
   char *servIP;								/* Server IP */
 	char *remote_file;					/* Remote Filename */
 
-
-	unsigned int drop_percent;	/* Drop Percent */	
 	int arg_i = 0;
 
 	/* Check for Debug Mode */

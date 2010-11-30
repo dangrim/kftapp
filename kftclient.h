@@ -7,8 +7,10 @@
 #include <stdlib.h>     /* for atoi() and exit() */
 #include <string.h>     /* for memset() */
 #include <unistd.h>     /* for close() */
+#include <string.h>
 #include <signal.h>
 #include <errno.h>
+#include "dropper.h"
 
 typedef unsigned char u8;
 typedef unsigned short u16;

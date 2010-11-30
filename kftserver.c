@@ -7,6 +7,7 @@ int free_connection = 1;
 u32 max_packet_size = 0;
 int tries = 0;
 int finish = 0;
+int drop_percent;							/* 2nd argument - drop percentage */		
 
 int sock;                     /* Socket */
 int recv_msg_size;
@@ -24,8 +25,7 @@ FILE *read_file;
 int main(int argc, char *argv[])
 {
 		/*Arguments*/
-    u16 servPort;     						/* 1st argument - server port */
-		int drop_percent;							/* 2nd argument - drop percentage */		
+    u16 servPort;     						/* 1st argument - server */
 		int arg_i = 0;		
 
 		/* Check for Debug Mode */
@@ -42,8 +42,16 @@ int main(int argc, char *argv[])
 
 		/* Port to listen to */
     servPort = atoi(argv[arg_i+1]);
-		drop_percent = atoi(argv[arg_i+2]);
+		if(servPort < 1024)
+		{
+			DieWithError("Your port number is too low.");
+		}
 
+		drop_percent = atoi(argv[arg_i+2]);
+		if (drop_percent < 0 || drop_percent > 99)
+		{
+			DieWithError("Drop Percent must be between 1 and 99");
+		}
 		/* Show parsed arguments */	
 		if(debug)
 		{

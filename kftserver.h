@@ -10,6 +10,7 @@
 #include <string.h>
 #include <signal.h>
 #include <errno.h>
+#include "dropper.h"
 
 typedef unsigned char u8;
 typedef unsigned short u16;
