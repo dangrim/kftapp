@@ -4,11 +4,19 @@ int sock;                       /* Socket descriptor */
 struct sockaddr_in servAddr; 	/* Server address */
 struct sockaddr_in fromAddr;    /* Source address */
 unsigned int fromSize;          /* In-out of address size for recvfrom() */
+unsigned int servSize;          /* In-out of address size for recvfrom() */
 int response_length;
-char *buffer;      				/* Buffer for string */
+u8 *in_buffer;      				/* Buffer for string */
+u8 *out_buffer;      				/* Buffer for string */
 struct sigaction myAction;      /* For setting signal handler */
+	char *local_file;						/* Local Filename */
+
 int debug = 0;
 int previous_offset = -1;
+int tries = 0;
+int offset = 0;
+int recv_msg_size = 0;
+u16 max_packet_size = 0;
 
 int main(int argc, char *argv[])
 {
@@ -17,10 +25,9 @@ int main(int argc, char *argv[])
   u16 servPort;     					/* Server port */
   char *servIP;								/* Server IP */
 	char *remote_file;					/* Remote Filename */
-	char *local_file;						/* Local Filename */
-  u16 max_packet_size;      	/* Length of string */
+
+
 	unsigned int drop_percent;	/* Drop Percent */	
-	char *init_buffer;
 	int arg_i = 0;
 
 	/* Check for Debug Mode */
@@ -76,7 +83,7 @@ int main(int argc, char *argv[])
 	* rest => filename
 	*/
 
-	init_buffer = pack_init_buffer(remote_file, strlen(remote_file), max_packet_size);
+	out_buffer = pack_init_buffer(remote_file, strlen(remote_file), max_packet_size);
 
   /* Create a best-effort datagram socket using UDP */
   if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
@@ -104,39 +111,39 @@ int main(int argc, char *argv[])
   servAddr.sin_port = htons(servPort);       /* Server port */
 
   /* Send the Initial Request to the server */
-  if ((response_length = sendto(sock, init_buffer, INITIAL_REQUEST_SIZE+strlen(remote_file), 0, (struct sockaddr *)
+/*  if ((response_length = sendto(sock, init_buffer, INITIAL_REQUEST_SIZE+strlen(remote_file), 0, (struct sockaddr *)
              &servAddr, sizeof(servAddr))) < 0)
 	{
-	  DieWithError("Failed to Send initial request");
-	}
-	else
-	{
-		printf("Initial Request successful, %d bytes sent: %s.\n", response_length, init_buffer+INITIAL_REQUEST_SIZE);
-	}
-	
-	buffer = (char *) malloc(max_packet_size);
+		printf("Error with initial request");
+	}*/
+	in_buffer = (u8 *) malloc(max_packet_size);
   /* Get a response */
-  if((response_length = recvfrom(sock, buffer, max_packet_size, 0,
-         (struct sockaddr *) &fromAddr, &fromSize)) == max_packet_size)
-  {
-
-  }
 	if(debug)
 	{
 		printf("Response Length: %d, Max Packet Size: %d", response_length, max_packet_size);
 	}	
-  
   fromSize = sizeof(fromAddr);
-	printf("Received: %s\n", buffer);    /* Print the received data */
 
+	while(1)
+	{
+		servSize = sizeof(servAddr);
+		receive_and_send();		
+		make_request();		
+		write_to_file();
+		printf("Received: %s\n", in_buffer+8);    /* Print the received data */
+	}
+	
 	close(sock);
 	exit(0);
 }
 
 void CatchAlarm(int ignored)
 {
-
-}
+	tries++;
+	if(debug)
+	{
+		printf("Failed Attempt #%d\n", tries);
+	}}
 
 /*
 *	INITIAL REQUEST
@@ -146,10 +153,89 @@ void CatchAlarm(int ignored)
 */
 char *pack_init_buffer(char *fname, int fname_length, u16 max_p_size)
 {
-	char *init_b = (char *)malloc(INITIAL_REQUEST_SIZE + fname_length);
+	u8 *init_b = (u8 *)malloc(INITIAL_REQUEST_SIZE + fname_length);
 	init_b[0] = 0;
 	init_b[1] = max_p_size & 0xFF;
 	init_b[2] = (max_p_size >> 8) & 0xFF;
 	memcpy(init_b+INITIAL_REQUEST_SIZE, fname, fname_length);
+
 	return init_b;
 }
+
+int receive_and_send()
+{
+	write_msg();	
+	alarm(5);
+	while((recv_msg_size = recvfrom(sock, in_buffer, max_packet_size, 0,
+		(struct sockaddr *) &servAddr, &servSize)) < 0)
+	{
+		if(errno == EINTR)
+		{
+			write_msg();
+			alarm(5);
+		}
+		else
+		{
+			return 1;
+		}
+	}
+	alarm(0);
+	return 0;
+}
+
+void make_request()
+{
+	int k = 0;
+	out_buffer = (u8 *)malloc(REQUEST_SIZE);
+	out_buffer[0] = 1;
+	pack_int(out_buffer+1, offset);
+	
+	if(debug)
+	{
+		printf("offset: %d\n", offset);
+		for(k = 0; k < 5; k++)
+		{
+			printf("%d|\n", out_buffer[k]);
+		}
+	}
+}
+/*
+*	Keep sending until it does not work. Upon success, increment offset.
+*/
+void write_msg()
+{
+	sendto(sock, out_buffer, max_packet_size, 0, (struct sockaddr *) &servAddr, sizeof(servAddr));
+}
+
+/*
+*	puts an int into a char buffer
+*/
+void pack_int(u8 *buffer, u32 i)
+{
+	buffer[0] = i & 0xFF;
+	buffer[1] = (i >> 8) & 0xFF;
+	buffer[2] = (i >> 16) & 0xFF;
+	buffer[3] = (i >> 24) & 0xFF;
+}
+
+void write_to_file()
+{
+	int length = unpack_int(in_buffer);
+	int msg_offset = unpack_int(in_buffer+4);
+	if(offset == msg_offset)
+	{
+    FILE *file;
+		file = fopen (local_file, "ab");  /* open the file for reading */
+		fwrite(in_buffer+8, 1, length, file);
+		fclose(file);  /* close the file prior to exiting the routine */
+		offset += length;
+	}
+}
+
+int unpack_int(u8 *buffer)
+{
+	int i = 0;
+	i = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+	return i;
+}
+

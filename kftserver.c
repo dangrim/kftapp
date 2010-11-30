@@ -5,6 +5,7 @@ int acknowledged = 0;
 int offset = 0;
 int free_connection = 1;
 u32 max_packet_size = 0;
+int tries = 0;
 
 int sock;                     /* Socket */
 int recv_msg_size;
@@ -15,8 +16,8 @@ struct sockaddr_in servAddr; 	/* Local address */
 struct sockaddr_in clntAddr; 	/* Client address */
 struct sigaction myAction;      /* For setting signal handler */
 unsigned int cliAddrLen;      /* Length of incoming message */
-char *in_buffer;        					/* Buffer for string */
-char *out_buffer;
+u8 *in_buffer;        					/* Buffer for string */
+u8 *out_buffer;
 FILE *read_file;
 
 int main(int argc, char *argv[])
@@ -62,12 +63,11 @@ int main(int argc, char *argv[])
     if (bind(sock, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0)
         DieWithError("bind() failed");
 
-		in_buffer = (char *)malloc(1000);		
+		in_buffer = (u8 *)malloc(1000);		
 
     while(1) /* Run forever */
     {
-      /* Set the size of the in-out parameter */
-			
+      /* Set the size of the in-out parameter */			
 			if(acknowledged != 1)
 			{
 				accept_request();
@@ -75,11 +75,13 @@ int main(int argc, char *argv[])
 			else
 			{
 				make_pkt(); //put information into buffer
-				send_until_success();
+				if(send_until_success()) //try to send
+				{
+					printf("Um...huge fail");
+				}
+				assess();
 			}
-			printf("looptime, %d.\n", acknowledged);
 		}
-    /* NOT REACHED */
 	return 0;
 }
 
@@ -99,15 +101,15 @@ void accept_request()
 				printf("Free Connection: %d.\n", free_connection);
 			}
 			/*Logic for checking what was received*/
-			if(in_buffer[0] == 0 && free_connection == 1)
+			if(in_buffer[0] == 0 && (free_connection == 1))
 			{
 				printf("new connection, time to init\n");
 				free_connection = 0;
 				init_transfer(in_buffer, recv_msg_size);
 				acknowledged = 1;
 			}
-			if(1 == in_buffer[0] && !free_connection){
-				/*continue transaction*/
+			else
+			{
 				acknowledged = 1;
 			}
 		}
@@ -116,27 +118,38 @@ void accept_request()
 /*
 *	Keep sending until it does not work. Upon success, increment offset.
 */
-void send_until_success()
+int send_until_success()
 {
-
-	send_msg_size = sendto(sock, out_buffer, max_packet_size, 0, (struct sockaddr *) &clntAddr, sizeof(clntAddr));
-
+	write_msg();	
 	alarm(5);
 	while((recv_msg_size = recvfrom(sock, in_buffer, MAX_REQUEST_SIZE, 0,
 		(struct sockaddr *) &clntAddr, &cliAddrLen)) < 0)
 	{
-		
+		if(errno == EINTR)
+		{
+			write_msg();
+			alarm(5);
+		}
+		else
+		{
+			return 1;
+		}
 	}
 	alarm(0);
+	if(debug)
+	{
+		printf("Msg Size: %d.\n", recv_msg_size);
+	}
+	return 0;
 }
 
 /*
 *	Request received, initialize max_packet_size & filename
 */
-void init_transfer(char *buffer, u32 msg_size)
+void init_transfer(u8 *buffer, u32 msg_size)
 {
 	max_packet_size = (buffer[1] + (buffer[2] << 8));
-	filename = (char *)malloc(msg_size-INITIAL_REQUEST_SIZE);
+	filename = (u8 *)malloc(msg_size-INITIAL_REQUEST_SIZE);
 	memcpy(filename, buffer+3, msg_size-INITIAL_REQUEST_SIZE);
 
   /* Set signal handler for alarm signal */
@@ -161,7 +174,7 @@ void init_transfer(char *buffer, u32 msg_size)
 /*
 *	puts an int into a char buffer
 */
-void pack_int(char *buffer, u32 i)
+void pack_int(u8 *buffer, u32 i)
 {
 	buffer[0] = i & 0xFF;
 	buffer[1] = (i >> 8) & 0xFF;
@@ -177,20 +190,26 @@ void pack_int(char *buffer, u32 i)
 */
 void make_pkt()
 {
-	if(debug)
-	{
-		printf("making packet\n");
-	}
-	out_buffer = (char *)malloc(max_packet_size);
+	out_buffer = (u8 *)malloc(max_packet_size);
 	int length = read_a_file(filename, out_buffer+RESPONSE_HEADER_SIZE, max_packet_size-RESPONSE_HEADER_SIZE);
+	int k;
 	pack_int(out_buffer, length);	
 	pack_int(out_buffer+4, offset);
+	if(debug)
+	{
+		//printf("Packet Length: %d, Offset: %d.\n", length, offset);
+		for(k = 0; k < 8; k++)
+		{
+			printf("%u|", out_buffer[k]);
+		}		
+		printf("%s\n", out_buffer+8);
+	}
 }
 
 /*
 *	Reads a file at a particular offset.
 */
-int read_a_file(char *filename, char *buffer, u16 read_length)
+int read_a_file(char *filename, u8 *buffer, u16 read_length)
 {
   int result;
  	/* "rb" means open the file for reading bytes */
@@ -207,8 +226,43 @@ int read_a_file(char *filename, char *buffer, u16 read_length)
 	return result;
 }
 
+void assess()
+{
+	int off = unpack_int(in_buffer+1);
+	if(debug)
+	{
+		printf("Offset %d, msg_offset %d\n", offset ,off);
+	}
+	if(off == offset)
+	{
+		if(debug)
+		{
+			printf("Offset incrementing");
+		}
+		offset += recv_msg_size-RESPONSE_HEADER_SIZE;	
+		acknowledged = 0;
+	}
+}
+
+void write_msg()
+{
+	sendto(sock, out_buffer, max_packet_size, 0, (struct sockaddr *) &clntAddr, sizeof(clntAddr));
+}
+
 void CatchAlarm(int ignored)
 {
-
+	tries++;
+	if(debug)
+	{
+		printf("Failed Attempt #%d", tries);
+	}
 }
+
+int unpack_int(u8 *buffer)
+{
+	int i = 0;
+	i = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+	return i;
+}
+
 //        printf("Handling client %s\n", inet_ntoa(clntAddr.sin_addr));

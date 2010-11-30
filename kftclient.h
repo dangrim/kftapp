@@ -17,7 +17,13 @@ typedef unsigned int u32;
 #define ACK 1
 #define NACK 0
 #define INITIAL_REQUEST_SIZE 3
+#define REQUEST_SIZE 5
+
 char *pack_init_buffer(char *fname, int fname_length, u16 max_p_size);
+int receive_and_send();
+void write_msg();
 void CatchAlarm(int ignored);
+void make_request();
+int unpack_int(u8 *buffer);
 
 #endif

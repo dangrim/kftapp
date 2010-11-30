@@ -19,14 +19,15 @@ typedef unsigned int u32;
 #define NACK 0
 #define INITIAL_REQUEST_SIZE 3
 #define RESPONSE_HEADER_SIZE 8
+#define MAX_ATTEMPTS 100
 #define MAX_REQUEST_SIZE 60000
 
 
 void accept_request();
 void make_pkt();
-void init_transfer(char *buffer, u32 msg_size);
-int read_a_file(char *filename, char *buffer, u16 read_length);
-void send_until_success();
+void init_transfer(u8 *buffer, u32 msg_size);
+int read_a_file(char *filename, u8 *buffer, u16 read_length);
+int send_until_success();
 void CatchAlarm(int ignored);
 
 #endif
