@@ -122,6 +122,7 @@ int main(int argc, char *argv[])
 	while(1)
 	{
 		receive_and_send();		
+		/*TO DO - FIX FIRST PACKET FAIL*/
 		if(!unpack_int(in_buffer))
 		{
 			break;

@@ -29,7 +29,7 @@ void make_pkt();
 void init_transfer(u8 *buffer, u32 msg_size);
 int send_until_success();
 void CatchAlarm(int ignored);
-u32 unpack_int(u8 *buffer);
+int unpack_int(u8 *buffer);
 int read_a_file(char *filename, u8 *buffer, u16 read_length);
 
 #endif

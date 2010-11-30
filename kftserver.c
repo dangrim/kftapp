@@ -216,10 +216,6 @@ void make_pkt()
 			printf("NO MAS");
 		}
 	}
-	if(length == -1)
-	{
-		printf("Nonexistant file");
-	}
 	pack_int(out_buffer, length);	
 	pack_int(out_buffer+4, offset);
 	if(debug)
@@ -246,7 +242,7 @@ int read_a_file(char *filename, u8 *buffer, u16 read_length)
 		fprintf(stderr, "%s NOT FOUND.\n", filename);
 		acknowledged = 0;
 		free_connection = 0;
-		return -1;
+		return 1;
 	}
 	fseek(read_file, offset, SEEK_SET);
 	result = fread(buffer, 1, read_length, read_file);
@@ -299,9 +295,9 @@ void CatchAlarm(int ignored)
 	tries++;
 }
 
-u32 unpack_int(u8 *buffer)
+int unpack_int(u8 *buffer)
 {
-	u32 i = 0;
+	int i = 0;
 	i = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
 	return i;
 }
