@@ -128,11 +128,19 @@ int main(int argc, char *argv[])
 	{
 		servSize = sizeof(servAddr);
 		receive_and_send();		
+		if(!unpack_int(in_buffer))
+		{
+			break;
+		}
 		make_request();		
 		write_to_file();
+		
 		printf("Received: %s\n", in_buffer+8);    /* Print the received data */
 	}
-	
+	if(debug)
+	{
+		printf("Transfer complete!\n");
+	}
 	close(sock);
 	exit(0);
 }

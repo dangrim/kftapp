@@ -6,6 +6,7 @@ int offset = 0;
 int free_connection = 1;
 u32 max_packet_size = 0;
 int tries = 0;
+int finish = 0;
 
 int sock;                     /* Socket */
 int recv_msg_size;
@@ -148,6 +149,7 @@ int send_until_success()
 */
 void init_transfer(u8 *buffer, u32 msg_size)
 {
+	offset = 0;
 	max_packet_size = (buffer[1] + (buffer[2] << 8));
 	filename = (u8 *)malloc(msg_size-INITIAL_REQUEST_SIZE);
 	memcpy(filename, buffer+3, msg_size-INITIAL_REQUEST_SIZE);
@@ -193,6 +195,16 @@ void make_pkt()
 	out_buffer = (u8 *)malloc(max_packet_size);
 	int length = read_a_file(filename, out_buffer+RESPONSE_HEADER_SIZE, max_packet_size-RESPONSE_HEADER_SIZE);
 	int k;
+	if(length == 0)
+	{
+		free_connection = 1;
+		acknowledged = 0;
+		finish = 1;
+		if(debug)
+		{
+			printf("NO MAS");
+		}
+	}
 	pack_int(out_buffer, length);	
 	pack_int(out_buffer+4, offset);
 	if(debug)
@@ -222,6 +234,15 @@ int read_a_file(char *filename, u8 *buffer, u16 read_length)
 	}
 	fseek(read_file, offset, SEEK_SET);
 	result = fread(buffer, 1, read_length, read_file);
+	fclose(read_file);
+	if(result != read_length)
+	{
+		
+		if(debug)
+		{
+			printf("File complete");
+		}
+	}
 	printf("Read: %s\n", buffer);
 	return result;
 }
@@ -229,6 +250,7 @@ int read_a_file(char *filename, u8 *buffer, u16 read_length)
 void assess()
 {
 	int off = unpack_int(in_buffer+1);
+	free(out_buffer);
 	if(debug)
 	{
 		printf("Offset %d, msg_offset %d\n", offset ,off);
