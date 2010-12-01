@@ -75,11 +75,10 @@ int main(int argc, char *argv[])
     if (bind(sock, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0)
         DieWithError("bind() failed");
 
-		in_buffer = (u8 *)malloc(1000);		
+		in_buffer = (u8 *)malloc(MAX_REQUEST_SIZE);		
 
     while(1) /* Run forever */
-    {
-      /* Set the size of the in-out parameter */			
+    {	
 			if(acknowledged != 1)
 			{
 				accept_request();
@@ -132,7 +131,7 @@ int send_until_success()
 {
 	write_msg();	
 	ualarm(TIMEOUT_VALUE, 0);
-	while((recv_msg_size = recvfrom(sock, in_buffer, MAX_REQUEST_SIZE, 0,
+	while((recv_msg_size = recvfrom(sock, in_buffer, max_packet_size, 0,
 		(struct sockaddr *) &clntAddr, &cliAddrLen)) < 0)
 	{
 		if(errno == EINTR)
@@ -161,9 +160,11 @@ void init_transfer(u8 *buffer, u32 msg_size)
 	tries = 0;
 	free_connection = 0;
 	max_packet_size = (buffer[1] + (buffer[2] << 8));
-	filename = (u8 *)malloc(msg_size-INITIAL_REQUEST_SIZE);
-	memcpy(filename, buffer+3, msg_size-INITIAL_REQUEST_SIZE);
+	printf("Packet Size: %d, file_name %s, msg_size %d", max_packet_size, buffer+3, msg_size-3);
+	filename = (char *)malloc(msg_size-INITIAL_REQUEST_SIZE);
+	memcpy(filename, buffer+INITIAL_REQUEST_SIZE, msg_size-INITIAL_REQUEST_SIZE);
 
+	in_buffer = (u8 *)malloc(max_packet_size);
   /* Set signal handler for alarm signal */
   myAction.sa_handler = CatchAlarm;
   if (sigfillset(&myAction.sa_mask) < 0) /* block everything in handler */
@@ -213,7 +214,7 @@ void make_pkt()
 		finish = 1;
 		if(debug)
 		{
-			printf("NO MAS");
+			printf("No More Data\n");
 		}
 	}
 	pack_int(out_buffer, length);	
@@ -244,6 +245,8 @@ int read_a_file(char *filename, u8 *buffer, u16 read_length)
 		free_connection = 0;
 		return 1;
 	}
+
+	/*Seek the right spot in the file and read the information*/
 	fseek(read_file, offset, SEEK_SET);
 	result = fread(buffer, 1, read_length, read_file);
 	fclose(read_file);
@@ -260,6 +263,8 @@ int read_a_file(char *filename, u8 *buffer, u16 read_length)
 	return result;
 }
 
+
+/* checks out the state of the server and increments values accordingly*/
 void assess()
 {
 	u32 off = unpack_int(in_buffer+1);
@@ -285,6 +290,7 @@ void assess()
 	}
 }
 
+/*sendto_dropper*/
 void write_msg()
 {
 	sendto_dropper(sock, out_buffer, max_packet_size, 0, (struct sockaddr *) &clntAddr, sizeof(clntAddr));
@@ -295,6 +301,7 @@ void CatchAlarm(int ignored)
 	tries++;
 }
 
+/*removes an int from a char buffer*/
 int unpack_int(u8 *buffer)
 {
 	int i = 0;

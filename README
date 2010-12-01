@@ -1,0 +1,85 @@
+Daniel Grim
+902228538
+
+#	 # # # # # # # # # # # # DISCLAIMER # # # # # # # # # # # # # # # # 
+#	 								client and server based on 											  #
+#	 http://cs.baylor.edu/~donahoo/practical/CSockets/textcode.html   #
+#	 # # # # # # # # # # # # # # # # ## # # # # # # # # # # # # # #  	#
+
+Instructions for Compilation
+
+1) Open up a terminal and cd to the directory with my code.
+2) Type "make" and it should produce a "kftclient" and "kftserver" as requested.
+
+kftserver
+
+The kftserver will run with the following parameters (as requested)
+	./kftserver (-d) <server_port_number> <loss_percent> 
+	e.g.	./kftserver -d 1234 20  
+	NOTE: "-d" is an optional flag for debug mode.
+
+kftclient
+
+The kftclient will run with the following parameters (as requested)
+	./kftclient (-d) <server_name> <server_port_number> <remote_filename> <local_filename> <max_packet_size> <loss_percent>
+	e.g. 	./kftclient -d localhost 1234 record.txt output.txt 1000 20
+	NOTE: "-d" is an optional flag for debug mode.
+
+ARQ Protocol
+
+Client Side
+
+There are two chunks of data that are sent from the client to the server.
+___________________
+INITIAL REQUEST			|
+1B - Request Flag		|
+2B - Max Packet Size|
+File Name						|
+___________________ |
+Initial Request was the first thing sent by a client and received by a server. A 0 in the Request Flag is necessary to allow the server to know that this is a new connection. The next two bytes indicate the maximum packet size that will be used for the connection. The file name is the one being requested.
+___________________
+REQUEST						 |
+1B - Request Flag	 |
+4B - Offset of File|
+___________________|
+Request is sent by the client to the server after the every time after the initial packet. It contains the offset that represents the last received chunk of data from the server. When the offsets are equal, then data is written. Request flag will always have the 1 bit flipped.
+
+The client relies on 3 methods after the packing of init_Buffer
+
+pack_init_buffer - This builds in the Initial Request and returns a buffer to it.
+(Loop)
+request_and_send - This method sends requests until client receives a message back from the server. 
+make_request 		 - Creates a request that represents the current state of the client in the transaction. THis loads the out_buffer.
+write_to_file		 - Takes the response from the server and writes it out to file if the offset is what we expect.
+(End)
+
+When the client starts, it sends an Initial Request to the server. After that, there is a loop that goes from request_and_send to make_request to write_to_file. These methods loop through until the response from the server has a length of 0 at which we know our transfer is complete.
+
+Server Side
+
+There is one part that is sent to clients.
+___________________
+RESPONSE					 |
+4B - Length of Data|
+4B - Offset of File|
+DATA fills the rest|
+___________________|
+Response is sent by the server and contains how much data is in the packet, the offset of the file that is being read on the server side and the data that was read from that file.
+
+The Server relies on couple big functions
+
+accept_request - this function handles a new initial request from the client and calls a function to initialize the values for the server (filename, max_packet_size)
+make_pkt - this creates the next packet to be sent to the client via send_until success, this is the function that calls read_a_file to set the fields of the response (length and data)
+send_until_success - similar to request and send from the client. This methods sends a response until the server received a message back from the client.
+assess - frees necessary memory and increments the offset if necessary.
+
+When a request is accepted, the client is acknowledged and init_transfer is called to initiate the transfer and therefore loops through make_pkt, send_until_success and assess. This is terminated when the user sends a response with 0 in the flag.
+
+Bugs & Limitations
+
+I poured an incredible amount of man hours into this project and I definitely learned quite a bit about UDP, designing your own protocol. It's a shame to say that my lack of understanding in C really slowed my progress throughout this project, as I could have done such a phenomenal job in using a language like Java. After collecting data, I tried to tweak some things and messed up my server and client a little bit. I did not get ALL of the functionality in time but I did the best that I could and despite its flaws, I'm proud of it. Some bugs/limitations that are still remaining:
+
+*The server needs to be restarted after each client has succeeded, I could not get it to restart each time.
+*Certain filenames will not work (2_5mb.txt), try to stick to simple ones like testing.txt, 5mb.txt
+*Has trouble when first packet is dropped from client (initial request) (this can happen with high drop rates).
+*There is a problem with memory allocation that surfaces every once in a while where bad data keeps server/clients from getting going.

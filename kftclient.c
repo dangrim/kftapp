@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 
 	/* Arguments */
   u16 servPort;     					/* Server port */
-  char *servIP;								/* Server IP */
+  char *server;								/* Server IP */
 	char *remote_file;					/* Remote Filename */
 
 	int arg_i = 0;
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 	}
 		
 	/*ARGUMENTS & Checks*/
-	servIP = argv[arg_i + 1];           						/* First arg:  server IP address (dotted quad) */
+	server = argv[arg_i + 1];           						/* First arg:  server IP address (dotted quad) */
 	servPort = atoi(argv[arg_i + 2]);   						/* Second arg: port # */
 	printf("%d\n", servPort);
 	if(servPort < 1024)
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 	/* Show parsed arguments */	
 	if(debug)
 	{
-	  printf("%s %d %s %s %u %d\n", servIP, servPort, remote_file, local_file, max_packet_size, drop_percent);
+	  printf("%s %d %s %s %u %d\n", server, servPort, remote_file, local_file, max_packet_size, drop_percent);
 	}
 
 	/* First Packet
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
   /* Construct the server address structure */
   memset(&servAddr, 0, sizeof(servAddr));    /* Zero out structure */
   servAddr.sin_family = AF_INET;
-  servAddr.sin_addr.s_addr = inet_addr(servIP);  /* Server IP address */
+  servAddr.sin_addr.s_addr = inet_addr(server);  /* Server IP address */
   servAddr.sin_port = htons(servPort);       /* Server port */
 
 	in_buffer = (u8 *) malloc(max_packet_size);
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 
 	if(debug)
 	{
-		printf("Transfer complete!\n");
+		printf("Transfer ended!\n");
 	}
 	printf("File transfer completed in %d seconds and %d microseconds.\n", seconds, microseconds);
 	close(sock);
@@ -161,7 +161,7 @@ void CatchAlarm(int ignored)
 	}}
 
 /*
-*	INITIAL REQUEST
+*	Prepared a buffer with an INITIAL REQUEST
 *	1 byte - 0
 *	2 bytes - max_packet_size
 * remainder - filename
