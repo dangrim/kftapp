@@ -104,10 +104,12 @@ int main(int argc, char *argv[])
   	DieWithError("sigaction() failed for SIGALRM");
 	}
 
+	struct hostent *he = gethostbyname(server);
+
   /* Construct the server address structure */
   memset(&servAddr, 0, sizeof(servAddr));    /* Zero out structure */
   servAddr.sin_family = AF_INET;
-  servAddr.sin_addr.s_addr = inet_addr(server);  /* Server IP address */
+  servAddr.sin_addr.s_addr = ((int*)(he->h_addr))[0];  /* Server IP address */
   servAddr.sin_port = htons(servPort);       /* Server port */
 
 	in_buffer = (u8 *) malloc(max_packet_size);
